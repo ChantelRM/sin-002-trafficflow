@@ -81,7 +81,7 @@ public class IngestionServiceApp {
         Map<Object,Map<String, Object>> uniqueIntersections = new LinkedHashMap<>();
 
         for(Map<String,Object> section: intersections){
-            String id = (String) section.getKey("id");
+            String id = (String) section.get("id");
             if(id!=null){
                 uniqueIntersections.put(id,section);
             }
