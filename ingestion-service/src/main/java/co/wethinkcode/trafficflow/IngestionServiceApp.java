@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 
 public class IngestionServiceApp {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException, CsvException{
         Javalin app = Javalin.create().start(7020);
 
         List<Map<String,Object>> cleanedIntersections = cleanCsv("/intersections.csv")
@@ -21,7 +21,7 @@ public class IngestionServiceApp {
         // cleaned records here for the other services to consume.
     }
 
-    private static List<Map<String,Object>> cleanCsv(String path){
+    private static List<Map<String,Object>> cleanCsv(String path) throws IOException, CsvException {
         List<String[]> rawRecords;
 
         try(InputStream in = IngestionServiceApp.class.getResourcesAsStream(path));
@@ -53,9 +53,38 @@ public class IngestionServiceApp {
         return id.trim().toUpperCase();
     }
 
-    private static String cleanDistict(String district){}
+    private static String cleanDistict(String district){
+        if(district == null || district.isEmpty()){
+            return null;
+        }
 
-    private static String cleanSignal(String signal){}
+        return district.trim().substring(0,1).toUpperCase() + word.substring(1);
+    }
 
-    private static Boolean cleanActive(String active){}
+    private static String cleanSignal(String signal){
+        if(signal.equals("unknown")) {return null;}
+
+        return signal.trim().toLowerCase();
+    }
+
+    private static Boolean cleanActive(String active){
+        String cleaned = active.trim().toUpperCase();
+        return switch(cleaned){
+            case "YES", "Y", "TRUE", "1" -> true;
+            case "NO","N","FALSE","0" -> false;
+            default -> null
+        };
+    }
+
+    private static List<Map<String,Object>> deduplicate(List<Map<String,Object>> intersections){
+        Map<Object,Map<String, Object>> uniqueIntersections = new LinkedHashMap<>();
+
+        for(Map<String,Object> section: intersections){
+            String id = section.get("id");
+            if(id!=null){
+                uniqueIntersections.put(id,section);
+            }
+        }
+        return new ArrayList<>(uniqueIntersections.values());
+    }
 }
