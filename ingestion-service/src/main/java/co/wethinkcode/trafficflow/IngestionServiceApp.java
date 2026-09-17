@@ -12,9 +12,9 @@ public class IngestionServiceApp {
     public static void main(String[] args) throws IOException, CsvException{
         Javalin app = Javalin.create().start(7020);
 
-        List<Map<String,Object>> cleanedIntersections = cleanCsv("/intersections.csv")
+        List<Map<String,Object>> cleanedIntersections = cleanCsv("/intersections-legacy.csv");
         app.get("/health", ctx -> ctx.result("OK"));
-        app.get("intersections" , ctx -> ctx.json(cleanedIntersections));
+        app.get("/intersections" , ctx -> ctx.json(cleanedIntersections));
 
         // TODO: read and clean src/main/resources/intersections-legacy.csv (intersections, districts, signal types data —
         // trim whitespace, fix casing, normalize dates/booleans) and expose the
@@ -24,7 +24,7 @@ public class IngestionServiceApp {
     private static List<Map<String,Object>> cleanCsv(String path) throws IOException, CsvException {
         List<String[]> rawRecords;
 
-        try(InputStream in = IngestionServiceApp.class.getResourcesAsStream(path));
+        try(InputStream in = IngestionServiceApp.class.getResourceAsStream(path) ;
             CSVReader reader = new CSVReader(new InputStreamReader(in,StandardCharsets.UTF_8))){
             List<String[]> rows = reader.readAll();
             rawRecords= rows.subList(1,rows.size());
@@ -57,12 +57,13 @@ public class IngestionServiceApp {
         if(district == null || district.isEmpty()){
             return null;
         }
-
-        return district.trim().substring(0,1).toUpperCase() + word.substring(1);
+        String trimmed = district.trim().replaceAll("\\s+", " ");
+        return trimmed.substring(0,1).toUpperCase() + trimmed.substring(1).toLowerCase();
     }
 
     private static String cleanSignal(String signal){
-        if(signal.equals("unknown")) {return null;}
+        if(signal.toLowerCase().equals("unknown") || signal.isEmpty()) {
+            return null;}
 
         return signal.trim().toLowerCase();
     }
@@ -72,7 +73,7 @@ public class IngestionServiceApp {
         return switch(cleaned){
             case "YES", "Y", "TRUE", "1" -> true;
             case "NO","N","FALSE","0" -> false;
-            default -> null
+            default -> null;
         };
     }
 
@@ -80,7 +81,7 @@ public class IngestionServiceApp {
         Map<Object,Map<String, Object>> uniqueIntersections = new LinkedHashMap<>();
 
         for(Map<String,Object> section: intersections){
-            String id = section.get("id");
+            String id = (String) section.getKey("id");
             if(id!=null){
                 uniqueIntersections.put(id,section);
             }
